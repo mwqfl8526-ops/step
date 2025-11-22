@@ -28,6 +28,12 @@ body { font-family: Arial, sans-serif; background-color:#121212; color:var(--whi
 .btn-sm { padding: 5px 10px; font-size: 0.85em; border-radius: 4px; margin-left: 5px; cursor: pointer; }
 .header-controls { display:flex; justify-content:flex-start; align-items:center; margin-bottom:15px; }
 .btn-back { background-color:var(--blue-royal); color:var(--white); padding:8px 12px; border-radius:5px; text-decoration:none; font-weight:bold; margin-right:10px; }
+/* البوكس الجديد للرسائل */
+#messageBox { display:none; padding:10px 15px; border-radius:5px; margin-bottom:15px; font-weight:bold; text-align:center; }
+#messageBox.info { background-color: var(--blue-royal); color: var(--white); }
+#messageBox.success { background-color: var(--green-success); color: var(--dark-bg); }
+#messageBox.warning { background-color: var(--yellow-warning); color: var(--dark-bg); }
+#messageBox.error { background-color: var(--red-emergency); color: var(--white); }
 </style>
 </head>
 <body>
@@ -40,6 +46,9 @@ body { font-family: Arial, sans-serif; background-color:#121212; color:var(--whi
 <div class="container">
 <h1>مراجعة طلبات التوظيف 📝</h1>
 
+<!-- بوكس الرسائل -->
+<div id="messageBox"></div>
+
 <div class="tabs">
     <button class="tab-button active" data-tab="review">قيد المراجعة</button>
     <button class="tab-button" data-tab="accepted">مقبولة (في انتظار الإكمال)</button>
@@ -50,7 +59,7 @@ body { font-family: Arial, sans-serif; background-color:#121212; color:var(--whi
     <table class="requests-table" border="1" style="width:100%; border-collapse: collapse;">
         <thead>
             <tr>
-                <th>رقم الطلب (مفتاح Firebase)</th>
+                <th>رقم الطلب</th>
                 <th>المتقدم</th>
                 <th>الوظيفة</th>
                 <th>الحالة</th>
@@ -63,7 +72,6 @@ body { font-family: Arial, sans-serif; background-color:#121212; color:var(--whi
 </div>
 </div>
 
-<!-- مودال عرض الملفات -->
 <div id="filesModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; z-index:9999;">
     <div style="background-color: var(--dark-bg); padding:20px; border-radius:10px; max-width:90%; max-height:90%; overflow:auto; position:relative;">
         <button id="closeFilesModalBtn" style="position:absolute; top:10px; right:10px; padding:5px 10px; cursor:pointer;">❌ إغلاق</button>
@@ -102,10 +110,23 @@ tabButtons.forEach(btn => {
     });
 });
 
-document.getElementById('refreshBtn').addEventListener('click', displayRequests);
+document.getElementById('refreshBtn').addEventListener('click', ()=>{ 
+    showMessage('جارٍ تحديث الطلبات...', 'info'); 
+    displayRequests(); 
+});
 document.getElementById('closeFilesModalBtn').addEventListener('click', ()=>{
     document.getElementById('filesModal').style.display='none';
 });
+
+// دالة عرض الرسائل في البوكس
+function showMessage(message, type='info', duration=3000){
+    const box = document.getElementById('messageBox');
+    box.textContent = message;
+    box.className = '';
+    box.classList.add(type);
+    box.style.display = 'block';
+    setTimeout(()=>{ box.style.display = 'none'; }, duration);
+}
 
 function getStatusPill(status) {
     let className = '';
@@ -117,9 +138,9 @@ function getStatusPill(status) {
 }
 
 function filterRequests(applications) {
-    if (currentTab === 'review') return applications.filter(app => app.status === 'قيد المراجعة');
-    else if (currentTab === 'accepted') return applications.filter(app => app.status === 'تم القبول');
-    else if (currentTab === 'archive') return applications.filter(app => app.status === 'تم الرفض' || app.status === 'تم الاكتمال');
+    if (currentTab === 'review') return applications.filter(app => app.status.trim() === 'قيد المراجعة');
+    else if (currentTab === 'accepted') return applications.filter(app => app.status.trim() === 'تم القبول');
+    else if (currentTab === 'archive') return applications.filter(app => app.status.trim() === 'تم الرفض' || app.status.trim() === 'تم الاكتمال');
     return [];
 }
 
@@ -164,10 +185,7 @@ function viewFiles(app){
 async function displayRequests() {
     const snapshot = await get(ref(db, 'jobApplications'));
     const data = snapshot.val() || {};
-    currentApplications = Object.entries(data).flatMap(([parentKey, apps]) =>
-        Object.entries(apps).map(([id, value]) => ({ firebaseKey: id, ...value }))
-    );
-    
+    currentApplications = Object.entries(data).map(([appKey, value])=> ({appKey, ...value}));
     const filtered = filterRequests(currentApplications);
     const tbody = document.getElementById('requestsTableBody');
     const noRequestsMessage = document.getElementById('noRequestsMessage');
@@ -183,18 +201,57 @@ async function displayRequests() {
         const tr=document.createElement('tr');
 
         const tdId = document.createElement('td');
-        tdId.textContent = app.firebaseKey;
+        tdId.textContent = app.id || '-';
 
         const tdName = document.createElement('td');
-        tdName.textContent = app.fullName;
+        tdName.textContent = app.fullName || '-';
 
         const tdRole = document.createElement('td');
-        tdRole.textContent = app.roleKey || app.role;
+        tdRole.textContent = app.roleKey || app.role || '-';
 
         const tdStatus = document.createElement('td');
         tdStatus.innerHTML = getStatusPill(app.status);
 
         const tdActions = document.createElement('td');
+
+        const acceptBtn=document.createElement('button');
+        acceptBtn.className='btn-sm';
+        acceptBtn.style.backgroundColor='var(--green-success)';
+        acceptBtn.textContent='✅ قبول';
+        acceptBtn.addEventListener('click', async ()=>{
+            if(confirm('هل أنت متأكد من قبول الطلب؟')){
+                showMessage('جارٍ قبول الطلب...', 'info');
+                await update(ref(db,'jobApplications/'+app.appKey),{status:'تم القبول'});
+                showMessage('تم قبول الطلب بنجاح ✅', 'success');
+                displayRequests();
+            }
+        });
+
+        const rejectBtn=document.createElement('button');
+        rejectBtn.className='btn-sm';
+        rejectBtn.style.backgroundColor='var(--red-emergency)';
+        rejectBtn.textContent='❌ رفض';
+        rejectBtn.addEventListener('click', async ()=>{
+            if(confirm('هل أنت متأكد من رفض الطلب؟')){
+                showMessage('جارٍ رفض الطلب...', 'info');
+                await update(ref(db,'jobApplications/'+app.appKey),{status:'تم الرفض'});
+                showMessage('تم رفض الطلب ❌', 'error');
+                displayRequests();
+            }
+        });
+
+        const deleteBtn=document.createElement('button');
+        deleteBtn.className='btn-sm';
+        deleteBtn.style.backgroundColor='#555';
+        deleteBtn.textContent='🗑️ حذف';
+        deleteBtn.addEventListener('click', async ()=>{
+            if(confirm('هل أنت متأكد من حذف الطلب؟')){
+                showMessage('جارٍ حذف الطلب...', 'info');
+                await remove(ref(db,'jobApplications/'+app.appKey));
+                showMessage('تم حذف الطلب 🗑️', 'warning');
+                displayRequests();
+            }
+        });
 
         const viewBtn=document.createElement('button');
         viewBtn.className='btn-sm';
@@ -202,33 +259,10 @@ async function displayRequests() {
         viewBtn.textContent='📂 عرض الملفات';
         viewBtn.addEventListener('click', ()=>viewFiles(app));
 
-        if(app.status==='قيد المراجعة'){
-            const acceptBtn=document.createElement('button');
-            acceptBtn.className='btn-sm';
-            acceptBtn.style.backgroundColor='var(--green-success)';
-            acceptBtn.textContent='✅ قبول';
-            acceptBtn.addEventListener('click', async ()=>{
-                if(confirm('هل أنت متأكد من قبول الطلب؟')){
-                    await update(ref(db,'jobApplications/'+parentKey+'/'+app.firebaseKey),{status:'تم القبول'});
-                    displayRequests();
-                }
-            });
-
-            const rejectBtn=document.createElement('button');
-            rejectBtn.className='btn-sm';
-            rejectBtn.style.backgroundColor='var(--red-emergency)';
-            rejectBtn.textContent='❌ رفض';
-            rejectBtn.addEventListener('click', async ()=>{
-                if(confirm('هل أنت متأكد من رفض الطلب؟')){
-                    await update(ref(db,'jobApplications/'+parentKey+'/'+app.firebaseKey),{status:'تم الرفض'});
-                    displayRequests();
-                }
-            });
-
-            tdActions.append(acceptBtn, rejectBtn, viewBtn);
-
+        if(app.status.trim()==='قيد المراجعة'){
+            tdActions.append(acceptBtn, rejectBtn, deleteBtn, viewBtn);
         } else {
-            tdActions.append(viewBtn);
+            tdActions.append(deleteBtn, viewBtn);
         }
 
         tr.append(tdId,tdName,tdRole,tdStatus,tdActions);
