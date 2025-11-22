@@ -18,13 +18,25 @@ header { background-color: rgba(0,0,0,0); padding:12px; text-align:center; font-
 #sendBtn, #imageBtn, #locationBtn { padding:0 12px; border:none; border-radius:50%; background-color:#075e54; color:#fff; cursor:pointer; font-size:16px; }
 #sendBtn:hover, #imageBtn:hover, #locationBtn:hover { background-color:#128c7e; }
 #clearBtn { position:absolute; right:12px; top:12px; padding:6px 12px; border:none; border-radius:6px; background-color:#ff3b3b; color:#fff; cursor:pointer; font-size:14px; z-index:20; }
-#namePromptOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; flex-direction:column; color:#fff; }
+#namePromptOverlay {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center;
+    flex-direction:column; color:#fff; z-index:1000;
+}
 #namePromptOverlay input { padding:10px; border-radius:6px; border:none; width:250px; margin-bottom:10px; }
 #namePromptOverlay button { padding:8px 16px; border:none; border-radius:6px; background-color:#25d366; color:#fff; cursor:pointer; }
 </style>
 </head>
 <body>
 <header id="chatHeader">الشات</header>
+
+<!-- مودل إدخال الاسم -->
+<div id="namePromptOverlay" style="display:none;">
+  <p>الرجاء إدخال اسمك للبدء بالشات:</p>
+  <input type="text" id="nameInput" placeholder="أدخل اسمك هنا">
+  <button id="nameSubmitBtn">ابدأ</button>
+</div>
+
 <div id="chatContainer">
     <div id="messages"></div>
     <div id="inputContainer">
@@ -54,14 +66,29 @@ const db = getDatabase(app);
 
 const urlParams = new URLSearchParams(window.location.search);
 const chatCode = urlParams.get('code');
-let userName = decodeURIComponent(urlParams.get('name')||"مساعد");
+let userName = decodeURIComponent(urlParams.get('name')||"");
 
 const messagesEl = document.getElementById('messages');
 const messageInput = document.getElementById('messageInput');
 
-if(!chatCode){ alert('❌ لم يتم تحديد كود الشات.'); window.location.href='assistant_login.html'; }
+if(!chatCode){
+    alert('❌ لم يتم تحديد كود الشات.');
+    window.location.href='assistant_login.html';
+}
 
 const chatRef = ref(db, `chats/${chatCode}`);
+
+// إذا الاسم فارغ، أظهر المودل
+const overlay = document.getElementById('namePromptOverlay');
+if(!userName){
+    overlay.style.display = 'flex';
+    document.getElementById('nameSubmitBtn').addEventListener('click', ()=>{
+        const inputName = document.getElementById('nameInput').value.trim();
+        if(!inputName) return alert('الرجاء إدخال اسمك.');
+        userName = inputName;
+        overlay.style.display = 'none';
+    });
+}
 
 // تحميل الرسائل مباشرة من Firebase في الوقت الفعلي
 onChildAdded(chatRef, snap=>{
