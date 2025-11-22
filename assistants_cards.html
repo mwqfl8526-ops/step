@@ -189,7 +189,7 @@ async function renderCards(assistantsList,title){
                 </div>
             </div>
             <div class="card-details">${details}<p><strong>نبذة:</strong> ${a.about}</p></div>
-            <button class="contact-btn" onclick="startChat('${a.chatCode}','${a.name}')">💬 تواصل الآن</button>
+            <button class="contact-btn" onclick="startChat('${a.chatCode}','')">💬 تواصل الآن</button>
             <button class="comments-btn" onclick="openCommentsModal('${a.chatCode}','${a.name}')">💬 التعليقات</button>
         `;
         grid.appendChild(card);
