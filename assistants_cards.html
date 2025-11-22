@@ -15,12 +15,10 @@
     --red-emergency: #cf6679;
     --green-success: #4caf50;
     --yellow-warning: #ffeb3b;
-    --text-color: #e0e0e0;
 }
 body {background-color: var(--dark-bg); color: var(--text-color); font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin:0; padding:0; direction:rtl;}
 .header-controls {display:flex; justify-content:flex-end; padding:15px; background-color:#1f1f1f; border-bottom:1px solid var(--border-color);}
 .btn-back {background-color:var(--blue-royal); color:#fff; padding:8px 15px; border-radius:6px; text-decoration:none; font-size:0.9em; transition:background-color 0.3s; border:none; cursor:pointer; margin-left:10px;}
-.btn-back:hover {background-color:#3b5b82;}
 .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; margin-top: 30px; }
 .assistant-card { background-color: #2a2a2a; border-radius: 10px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); border:1px solid var(--blue-royal); position: relative; transition: transform 0.3s,border-color 0.3s; }
 .assistant-card:hover { transform: translateY(-5px); border-color: var(--gold); }
@@ -58,7 +56,7 @@ body {background-color: var(--dark-bg); color: var(--text-color); font-family:'S
 <!-- مودل التعليقات -->
 <div id="commentsModal" class="modal-bg">
     <div class="modal-content">
-        <button class="close-modal">×</button>
+        <button class="close-modal" onclick="closeCommentsModal()">×</button>
         <h3 id="modalAssistantName"></h3>
         <div id="modalCommentsList"></div>
         <input type="text" placeholder="أدخل اسمك..." id="modalCommentName" class="comment-input">
@@ -70,13 +68,13 @@ body {background-color: var(--dark-bg); color: var(--text-color); font-family:'S
             <option value="4">⭐ 4</option>
             <option value="5" selected>⭐ 5</option>
         </select>
-        <button class="comment-submit">إرسال التعليق</button>
+        <button onclick="submitModalComment()" class="comment-submit">إرسال التعليق</button>
     </div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
-import { getDatabase, ref, get, push, set } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
+import { getDatabase, ref, get, set, push } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDpVqFWJfB4rA2-NA4QIl1w07e2LFQaYic",
@@ -91,86 +89,71 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-const ROLES = {
-    GUIDE: {key:"GUIDE", name:"مرشد سياحي"},
-    COMPANION: {key:"COMPANION", name:"مرافق لذوي الاحتياجات الخاصة"},
-    DRIVER: {key:"DRIVER", name:"سائق نقل خاص"}
-};
-const keyMap = { GUIDE:'assistants_guides', COMPANION:'assistants_companions', DRIVER:'assistants_drivers' };
+let currentModalCode = null;
 
-// ⭐ الدوال المساعدة
 function renderStars(rating){
     let stars='';
     for(let i=1;i<=5;i++) stars+=i<=rating?'⭐':'☆';
     return stars;
 }
-function getMajorityRating(comments){
-    if(!comments || comments.length===0) return 5;
-    const avg = Math.round(comments.reduce((a,c)=>a+c.rating,0)/comments.length);
-    return avg;
+
+async function getAverageRating(appId){
+    const snap = await get(ref(db, `assistantComments/${appId}`));
+    if(!snap.exists()) return 5;
+    const comments = Object.values(snap.val());
+    const total = comments.reduce((sum,c)=>sum+c.rating,0);
+    return Math.round(total/comments.length);
 }
 
-// المودل
-let currentModalCode = null;
 function openCommentsModal(code,name){
     currentModalCode=code;
     document.getElementById('modalAssistantName').textContent=name;
     loadModalComments(code);
     document.getElementById('commentsModal').style.display='flex';
-
-    document.querySelector('.close-modal').onclick = closeCommentsModal;
-    document.querySelector('.comment-submit').onclick = submitModalComment;
 }
+
 function closeCommentsModal(){
     document.getElementById('commentsModal').style.display='none';
     currentModalCode=null;
 }
-function loadModalComments(code){
+
+async function loadModalComments(code){
     const div=document.getElementById('modalCommentsList');
     div.innerHTML='';
-    let comments = JSON.parse(localStorage.getItem(`comments_${code}`)) || [];
-    comments.slice(-20).forEach(c=>{
+    const snap = await get(ref(db, `assistantComments/${code}`));
+    if(!snap.exists()) return;
+    const comments = Object.values(snap.val());
+    comments.forEach(c=>{
         const el=document.createElement('div');
         el.className='comment-item';
-        el.innerHTML=`<span class="comment-name">${c.name||'زائر'}</span>
-                        <span class="comment-stars">${'⭐'.repeat(c.rating)}</span>
-                        <span class="comment-text">${c.text}</span>`;
+        el.innerHTML=`<span class="comment-name">${c.name}</span><span class="comment-stars">${'⭐'.repeat(c.rating)}</span><span class="comment-text">${c.text}</span>`;
         div.appendChild(el);
     });
 }
-function submitModalComment(){
+
+async function submitModalComment(){
     if(!currentModalCode) return;
     const name = document.getElementById('modalCommentName').value.trim() || "زائر";
     const text = document.getElementById('modalCommentText').value.trim();
     const rating = parseInt(document.getElementById('modalCommentRating').value);
     if(!text) return;
 
-    const comment = {name,text,rating};
-    const localKey = `comments_${currentModalCode}`;
-    const existing = JSON.parse(localStorage.getItem(localKey)) || [];
-    existing.push(comment);
-    localStorage.setItem(localKey, JSON.stringify(existing));
-
-    // حفظ في Firebase
-    const newRef = push(ref(db, `assistantComments/${currentModalCode}`));
-    set(newRef, comment);
-
-    // تحديث الكارد مباشرة
-    const card = document.querySelector(`.assistant-card[data-id='${currentModalCode}']`);
-    if(card){
-        const comments = JSON.parse(localStorage.getItem(localKey)) || [];
-        const avgRating = getMajorityRating(comments);
-        const ratingDiv = card.querySelector('.rating');
-        if(ratingDiv) ratingDiv.innerHTML = renderStars(avgRating);
-    }
-
-    loadModalComments(currentModalCode);
+    await push(ref(db, `assistantComments/${currentModalCode}`), {name,text,rating});
+    alert('✅ تم إرسال تعليقك بنجاح');
 
     document.getElementById('modalCommentName').value='';
     document.getElementById('modalCommentText').value='';
     document.getElementById('modalCommentRating').value='5';
+    loadModalComments(currentModalCode);
+    updateCardRating(currentModalCode);
+}
 
-    alert("تم إرسال تعليقك بنجاح");
+async function updateCardRating(appId){
+    const card = document.querySelector(`.assistant-card[data-id='${appId}']`);
+    if(!card) return;
+    const avgRating = await getAverageRating(appId);
+    const ratingDiv = card.querySelector('.rating');
+    if(ratingDiv) ratingDiv.innerHTML = renderStars(avgRating);
 }
 
 // عرض البطاقات
@@ -179,34 +162,33 @@ async function renderCards(assistantsList,title){
     const grid = document.getElementById('assistantCardsGrid');
     grid.innerHTML='';
     if(assistantsList.length===0){ grid.innerHTML='<p style="text-align:center;color:#aaa;">لا يوجد مساعدون متاحون حالياً لهذا الدور.</p>'; return; }
-    assistantsList.forEach(a=>{
+
+    for(const a of assistantsList){
+        const avgRating = await getAverageRating(a.appId);
         const card = document.createElement('div');
         card.className='assistant-card';
-        card.setAttribute('data-id', a.chatCode);
+        card.setAttribute('data-id', a.appId);
 
         let details='';
-        if(a.groupLimit){ details+=`<p><strong>التخصص:</strong> ${a.guideType||'عام'}</p><p><strong>حد المجموعة:</strong> ${a.groupLimit} شخص</p><p><strong>سعر اليوم:</strong> ${a.price} درهم</p>`; }
-        else if(a.specialization){ details+=`<p><strong>التخصص:</strong> ${a.specialization}</p><p><strong>سعر اليوم:</strong> ${a.priceDay} درهم</p><p><strong>سعر الساعة:</strong> ${a.priceHour} درهم</p>`; }
-        else if(a.cityPrice){ details+=`<p><strong>أجرة المدينة:</strong> ${a.cityPrice} درهم</p><p><strong>أجرة خارج المدينة:</strong> ${a.outCityPrice} درهم</p>`; }
-
-        const comments = JSON.parse(localStorage.getItem(`comments_${a.chatCode}`)) || [];
-        const majorityRating = getMajorityRating(comments);
-        const ratingHTML=`<div class="rating">${renderStars(majorityRating)}</div><div>(${a.experience} سنوات خبرة)</div>`;
+        if(a.guideType) details+=`<p><strong>التخصص:</strong> ${a.guideType}</p><p><strong>حد المجموعة:</strong> ${a.groupLimit}</p><p><strong>سعر اليوم:</strong> ${a.price} درهم</p>`;
+        else if(a.specialization) details+=`<p><strong>التخصص:</strong> ${a.specialization}</p><p><strong>سعر اليوم:</strong> ${a.priceDay} درهم</p><p><strong>سعر الساعة:</strong> ${a.priceHour} درهم</p>`;
+        else if(a.cityPrice) details+=`<p><strong>أجرة المدينة:</strong> ${a.cityPrice} درهم</p><p><strong>أجرة خارج المدينة:</strong> ${a.outCityPrice} درهم</p>`;
 
         card.innerHTML=`
             <div class="card-header">
                 <img src="${a.img||'images/placeholder_profile.png'}" class="profile-img" alt="${a.name}">
                 <div>
                     <h3>${a.name}</h3>
-                    ${ratingHTML}
+                    <div class="rating">${renderStars(avgRating)}</div>
+                    <div>(${a.experience||0} سنوات خبرة)</div>
                 </div>
             </div>
-            <div class="card-details">${details}<p><strong>نبذة:</strong> ${a.about}</p></div>
+            <div class="card-details">${details}<p><strong>نبذة:</strong> ${a.about||''}</p></div>
             <button class="contact-btn">💬 تواصل الآن</button>
             <button class="comments-btn">💬 التعليقات</button>
         `;
         grid.appendChild(card);
-    });
+    }
 
     grid.addEventListener('click', (e)=>{
         const card = e.target.closest('.assistant-card');
@@ -214,43 +196,21 @@ async function renderCards(assistantsList,title){
         const code = card.getAttribute('data-id');
         const name = card.querySelector('h3').textContent;
 
-        if(e.target.classList.contains('comments-btn')){
-            openCommentsModal(code, name);
-        }
-
-        if(e.target.classList.contains('contact-btn')){
-            window.location.href = `chat_page.html?code=${code}&name=${encodeURIComponent(name)}`;
-        }
+        if(e.target.classList.contains('comments-btn')) openCommentsModal(code,name);
+        if(e.target.classList.contains('contact-btn')) window.location.href = `chat_page.html?code=${code}&name=${encodeURIComponent(name)}`;
     });
 }
 
-// جلب البيانات
+// جلب البيانات من Firebase
 document.addEventListener('DOMContentLoaded', async()=>{
-    const urlParams = new URLSearchParams(window.location.search);
-    const roleKey = urlParams.get('role');
-
-    const storageKey = roleKey ? `assistants_${roleKey}` : 'assistants_all';
-    let cachedData = JSON.parse(localStorage.getItem(storageKey));
-
-    if(cachedData){
-        renderCards(cachedData, roleKey ? ROLES[roleKey].name : "جميع المساعدين المتاحين");
-    }
-
-    if(roleKey){
-        const snap = await get(ref(db,keyMap[roleKey]));
-        if(snap.exists()){
-            const data = Object.values(snap.val());
-            localStorage.setItem(storageKey, JSON.stringify(data));
-            renderCards(data, ROLES[roleKey].name);
-        }
-    } else {
-        const guides = (await get(ref(db,'assistants_guides'))).val() || {};
-        const companions = (await get(ref(db,'assistants_companions'))).val() || {};
-        const drivers = (await get(ref(db,'assistants_drivers'))).val() || {};
-        const data = [...Object.values(guides),...Object.values(companions),...Object.values(drivers)];
-        localStorage.setItem(storageKey, JSON.stringify(data));
-        renderCards(data, "جميع المساعدين المتاحين");
-    }
+    const guidesSnap = await get(ref(db,'assistants_guides'));
+    const companionsSnap = await get(ref(db,'assistants_companions'));
+    const driversSnap = await get(ref(db,'assistants_drivers'));
+    const guides = guidesSnap.exists()?Object.values(guidesSnap.val()):[];
+    const companions = companionsSnap.exists()?Object.values(companionsSnap.val()):[];
+    const drivers = driversSnap.exists()?Object.values(driversSnap.val()):[];
+    const allAssistants = [...guides,...companions,...drivers];
+    renderCards(allAssistants,"جميع المساعدين المتاحين");
 });
 </script>
 </body>
