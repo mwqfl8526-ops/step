@@ -4,9 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>إدارة أكواد التذاكر</title>
-<link rel="stylesheet" href="style.css">
 <style>
-/* --- CSS الموحد --- */
 :root {
     --dark-bg: #121212;
     --card-bg: #1f1f1f;
@@ -58,7 +56,7 @@ input[type="text"], input[type="date"] {
 
 input:focus { border-color: var(--gold); box-shadow:0 0 8px rgba(255,193,7,0.5); outline:none; }
 
-button, .btn-primary, .btn-back {
+button, .btn-back {
     cursor:pointer;
     border:none; border-radius:5px; padding:10px 20px; transition: background-color 0.3s;
 }
@@ -71,6 +69,17 @@ button, .btn-primary, .btn-back {
 
 .tickets-table td { font-size:0.9em; }
 .tickets-table .expired { color: var(--red-emergency); font-weight:bold; }
+
+#ticketMessage {
+    display:none;
+    margin-top:10px;
+    max-height:200px;
+    overflow-y:auto;
+    padding:5px;
+    border:1px solid var(--gold);
+    border-radius:5px;
+    background-color:#1a1a1a;
+}
 </style>
 </head>
 <body>
@@ -92,8 +101,8 @@ button, .btn-primary, .btn-back {
             <label for="expiryDate">تاريخ انتهاء الصلاحية:</label>
             <input type="date" id="expiryDate" required>
         </div>
-        <button onclick="addTicket()" class="btn-primary">➕ إضافة الكود</button>
-        <p id="ticketMessage" style="margin-top:10px; display:none;"></p>
+        <button id="addTicketBtn" class="btn-primary">➕ إضافة الكود</button>
+        <div id="ticketMessage"></div>
     </div>
 
     <h2>قائمة أكواد التذاكر الحالية</h2>
@@ -132,6 +141,41 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const ticketsRef = ref(db, 'ticketCodes');
 
+const ticketMsgBox = document.getElementById('ticketMessage');
+const addTicketBtn = document.getElementById('addTicketBtn');
+const codeInput = document.getElementById('newTicketCode');
+const expiryInput = document.getElementById('expiryDate');
+
+// صندوق الرسائل
+function addMessage(text, type='info'){
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const msgDiv = document.createElement('div');
+    msgDiv.style.marginBottom = '5px';
+    msgDiv.style.padding = '5px 8px';
+    msgDiv.style.borderRadius = '4px';
+    msgDiv.style.fontSize = '0.9em';
+    msgDiv.style.color = '#fff';
+    msgDiv.style.display = 'flex';
+    msgDiv.style.justifyContent = 'space-between';
+
+    let icon = '';
+    let bgColor = '#555';
+    switch(type){
+        case 'success': icon='✅'; bgColor='#4caf50'; break;
+        case 'error': icon='❌'; bgColor='#f44336'; break;
+        case 'loading': icon='⏳'; bgColor='#ff9800'; break;
+        default: icon='ℹ️'; bgColor='#2196f3'; break;
+    }
+
+    msgDiv.style.backgroundColor = bgColor;
+    msgDiv.innerHTML = `<span>${icon} ${text}</span><span>${timeStr}</span>`;
+    ticketMsgBox.appendChild(msgDiv);
+    ticketMsgBox.style.display='block';
+    ticketMsgBox.scrollTop = ticketMsgBox.scrollHeight;
+}
+
+// عرض التذاكر
 async function displayTickets() {
     const tbody = document.getElementById('ticketsTableBody');
     const noTicketsMessage = document.getElementById('noTicketsMessage');
@@ -139,7 +183,6 @@ async function displayTickets() {
 
     const snapshot = await get(ticketsRef);
     const tickets = snapshot.exists() ? snapshot.val() : {};
-
     const ticketKeys = Object.keys(tickets);
     if(ticketKeys.length === 0){
         noTicketsMessage.style.display = 'block';
@@ -148,7 +191,6 @@ async function displayTickets() {
     noTicketsMessage.style.display = 'none';
 
     const today = new Date();
-
     ticketKeys.forEach(key => {
         const ticket = tickets[key];
         const tr = document.createElement('tr');
@@ -165,52 +207,59 @@ async function displayTickets() {
     });
 }
 
+// إضافة كود جديد
 async function addTicket() {
-    const codeInput = document.getElementById('newTicketCode');
-    const expiryInput = document.getElementById('expiryDate');
-    const msg = document.getElementById('ticketMessage');
-    msg.style.display = 'none';
-
     const code = codeInput.value.trim();
     const expiryDate = expiryInput.value;
 
     if(!code || !expiryDate){
-        msg.textContent = "❌ يرجى ملء جميع الحقول.";
-        msg.style.color = 'red';
-        msg.style.display = 'block';
+        addMessage('يرجى ملء جميع الحقول.', 'error');
         return;
     }
 
-    const snapshot = await get(ticketsRef);
-    const tickets = snapshot.exists() ? snapshot.val() : {};
+    addMessage('جاري إضافة الكود...', 'loading');
 
-    if(Object.values(tickets).some(t => t.code === code)){
-        msg.textContent = "❌ هذا الكود موجود بالفعل.";
-        msg.style.color = 'red';
-        msg.style.display = 'block';
-        return;
+    try {
+        const snapshot = await get(ticketsRef);
+        const tickets = snapshot.exists() ? snapshot.val() : {};
+
+        if(Object.values(tickets).some(t => t.code === code)){
+            addMessage(`الكود "${code}" موجود بالفعل.`, 'error');
+            return;
+        }
+
+        const newTicketRef = ref(db, `ticketCodes/${Date.now()}`);
+        await set(newTicketRef, { code, expiryDate });
+
+        addMessage(`تمت إضافة الكود "${code}" بنجاح.`, 'success');
+        codeInput.value='';
+        expiryInput.value='';
+        displayTickets();
+
+    } catch (err){
+        console.error(err);
+        addMessage('حدث خطأ أثناء إضافة الكود.', 'error');
     }
-
-    const newTicketRef = ref(db, `ticketCodes/${Date.now()}`);
-    await set(newTicketRef, { code, expiryDate });
-
-    msg.textContent = `✅ تم إضافة الكود ${code} بنجاح.`;
-    msg.style.color = 'green';
-    msg.style.display = 'block';
-    codeInput.value='';
-    expiryInput.value='';
-    displayTickets();
 }
 
+// حذف كود
 window.removeTicket = async function(key){
     if(confirm("هل تريد حذف هذا الكود؟")){
-        await remove(ref(db, `ticketCodes/${key}`));
-        displayTickets();
-        alert("✅ تم الحذف بنجاح.");
+        try{
+            await remove(ref(db, `ticketCodes/${key}`));
+            displayTickets();
+            addMessage('تم حذف الكود بنجاح.', 'success');
+        } catch(err){
+            console.error(err);
+            addMessage('حدث خطأ أثناء الحذف.', 'error');
+        }
     }
 }
 
-document.addEventListener('DOMContentLoaded', displayTickets);
+document.addEventListener('DOMContentLoaded', ()=>{
+    displayTickets();
+    addTicketBtn.addEventListener('click', addTicket);
+});
 </script>
 
 </body>
