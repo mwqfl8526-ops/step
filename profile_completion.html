@@ -44,6 +44,9 @@ button{cursor:pointer;}
 <h1 id="pageTitle">استكمال البيانات الشخصية</h1>
 <p id="roleInfo" style="color: var(--blue-royal); font-weight: bold;"></p>
 
+<!-- أعلى الفورم مباشرة -->
+<div id="statusBox" style="display:none; padding:12px; margin-bottom:15px; text-align:center; font-weight:bold; border-radius:6px;"></div>
+
 <form id="completionForm">
     <div class="profile-img-container">
         <img id="imagePreview" class="profile-img-preview" src="images/guide_man.png" alt="صورة شخصية">
@@ -52,12 +55,12 @@ button{cursor:pointer;}
         <label for="profilePicture">👤 صورة شخصية:</label>
         <input type="file" id="profilePicture" accept="image/*" required onchange="previewImage(event)">
     </div>
-      
+
     <div class="form-group">
         <label for="fullName">الاسم (يملأ تلقائياً):</label>
         <input type="text" id="fullName" readonly style="background-color:#333;" required>
     </div>
-      
+    
     <div class="form-group">
         <label for="age">العمر:</label>
         <input type="number" id="age" required>
@@ -67,16 +70,16 @@ button{cursor:pointer;}
         <label for="experience">سنوات الخبرة:</label>
         <input type="number" id="experience" required>
     </div>
-      
+    
     <div id="roleSpecificFields"></div>
-      
+    
     <div class="form-group">
         <label for="about">نبذة مختصرة عنك (ستظهر للسائح):</label>
         <textarea id="about" rows="4" required></textarea>
     </div>
 
     <button type="submit" class="btn-submit">✅ إرسال البيانات</button>
-      
+    
     <div id="message-box" style="padding:15px; margin-top:20px; text-align:center; display:none;"></div>
 </form>
 </div>
@@ -119,7 +122,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // جلب بيانات الطلب من Firebase
     try{
         const snapshot = await get(ref(db, 'jobApplications'));
         if(snapshot.exists()){
@@ -194,15 +196,24 @@ function renderRoleFields(roleKey){
     container.innerHTML=fieldsHTML;
 }
 
+const pathMap = {
+    [ROLES.GUIDE.key]: 'assistants_guides',
+    [ROLES.COMPANION.key]: 'assistants_companions',
+    [ROLES.DRIVER.key]: 'assistants_drivers'
+};
+
 document.getElementById('completionForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const submitButton = e.target.querySelector('button[type="submit"]');
     submitButton.disabled=true;
 
     const msgBox = document.getElementById('message-box');
-    msgBox.textContent='⏳ جاري معالجة البيانات...';
-    msgBox.style.backgroundColor='var(--blue-royal)';
-    msgBox.style.display='block';
+    const statusBox = document.getElementById('statusBox');
+
+    // إظهار البوكس بحالة جاري المعالجة
+    statusBox.style.display='block';
+    statusBox.style.backgroundColor='var(--blue-royal)';
+    statusBox.textContent='⏳ جاري معالجة البيانات...';
 
     const imgDataURL = document.getElementById('imagePreview').src;
 
@@ -232,19 +243,10 @@ document.getElementById('completionForm').addEventListener('submit', async (e)=>
             break;
     }
 
-    // حفظ المساعد في Firebase
-    const pathMap = {
-        [ROLES.GUIDE.key]: 'assistants_guides',
-        [ROLES.COMPANION.key]: 'assistants_companions',
-        [ROLES.DRIVER.key]: 'assistants_drivers'
-    };
-    const dbPath = pathMap[roleKey];
-
     try{
-        const newRef = push(ref(db, dbPath));
+        const newRef = push(ref(db, pathMap[roleKey]));
         await set(newRef, assistantData);
 
-        // تحديث حالة الطلب في jobApplications
         const appsSnapshot = await get(ref(db,'jobApplications'));
         if(appsSnapshot.exists()){
             const appsData = appsSnapshot.val();
@@ -254,15 +256,18 @@ document.getElementById('completionForm').addEventListener('submit', async (e)=>
             }
         }
 
+        // تحديث البوكس بالنجاح
+        statusBox.style.backgroundColor='var(--green-success)';
+        statusBox.textContent='✅ تم استكمال البيانات بنجاح!';
         msgBox.innerHTML=`
-✅ تم استكمال البيانات بنجاح.
-<br>⚠️ يرجى الاحتفاظ بهذا الكود للدخول للشات الخاص بك.
+⚠️ يرجى الاحتفاظ بهذا الكود للدخول للشات الخاص بك.
 <br><button class="btn-login" onclick="goToAssistantLogin()">اذهب لتسجيل الدخول كمساعد</button>
 `;
-        msgBox.style.backgroundColor='var(--green-success)';
+        msgBox.style.display='block';
     }catch(err){
-        msgBox.innerHTML='❌ حدث خطأ أثناء حفظ البيانات.';
-        msgBox.style.backgroundColor='var(--red-emergency)';
+        statusBox.style.backgroundColor='var(--red-emergency)';
+        statusBox.textContent='❌ حدث خطأ أثناء حفظ البيانات.';
+        msgBox.style.display='none';
         console.error(err);
     }
 
