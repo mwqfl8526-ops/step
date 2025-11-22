@@ -4,16 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>استقبال الطلبات</title>
-<link rel="stylesheet" href="style2.css">
 <style>
 body { font-family: Arial, sans-serif; background-color: #121212; color: #e0e0e0; margin:0; padding:0; }
 .container { max-width: 900px; margin: 30px auto; background-color: #1e1e1e; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #000; }
 h2 { text-align:center; margin-bottom:20px; }
-button { padding:10px 15px; border:none; border-radius:5px; cursor:pointer; background-color:#25d366; color:#fff; font-weight:bold; margin-top:5px; }
+button { padding:10px 15px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; margin-top:5px; }
 .order-card { background-color:#2c2c2c; margin-bottom:10px; padding:10px; border-radius:5px; display:flex; justify-content:space-between; align-items:center; }
 .order-info { flex:1; }
 .hidden { display:none; }
-.error { color:#ff4d4d; font-weight:bold; }
 .small-btn { padding:5px 8px; font-size:12px; margin-left:5px; border-radius:5px; }
 .delete-btn { background-color:#ff4d4d; color:#fff; }
 .location-btn { background-color:#128c7e; color:#fff; }
@@ -21,6 +19,7 @@ button { padding:10px 15px; border:none; border-radius:5px; cursor:pointer; back
 </style>
 </head>
 <body>
+
 <div class="container">
 <h2>استقبال الطلبات</h2>
 
@@ -33,21 +32,20 @@ button { padding:10px 15px; border:none; border-radius:5px; cursor:pointer; back
     <h3>الطلبات الخاصة بالمكان (<span id="placeTitle">تحميل...</span>)</h3>
     <div id="ordersContainer"><p>جاري تحميل الطلبات...</p></div>
 </div>
-<div class="error" id="accessError" style="display:none; text-align: center;"></div>
 
 <!-- صوت الاشعار -->
 <audio id="notifSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
-import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
+import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDpVqFWJfB4rA2-NA4QIl1w07e2LFQaYic",
   authDomain: "tourguideapp-313c1.firebaseapp.com",
   databaseURL: "https://tourguideapp-313c1-default-rtdb.firebaseio.com",
   projectId: "tourguideapp-313c1",
-  storageBucket: "tourguideapp-313c1.firebasestorage.app",
+  storageBucket: "tourguideapp-313c1.appspot.com",
   messagingSenderId: "1036127588385",
   appId: "1:1036127588385:web:d144dba8f70fe094395360"
 };
@@ -60,32 +58,17 @@ const deleteAllBtn = document.getElementById('deleteAllBtn');
 const refreshBtn = document.getElementById('refreshBtn');
 const ordersContainer = document.getElementById('ordersContainer');
 const placeTitle = document.getElementById('placeTitle');
-const accessError = document.getElementById('accessError');
 const notifSound = document.getElementById('notifSound');
 
 let currentPlaceCode = null;
-let currentPlaceKey = null;
 let lastOrdersCount = 0;
 
-async function getPlaceData(code, password){
-    const keys = ['hotels','restaurants','stores'];
-    for(const key of keys){
-        const snapshot = await get(ref(db, key));
-        const places = snapshot.val() || {};
-        for(const [pKey, place] of Object.entries(places)){
-            if(place.code===code && place.password===password){
-                currentPlaceKey = pKey;
-                return { ...place, collection: key };
-            }
-        }
-    }
-    return null;
-}
-
 async function displayOrders(){
-    if(!currentPlaceKey) return;
-    const bookingsSnap = await get(ref(db,'bookings/'+currentPlaceKey));
-    const orders = bookingsSnap.val() || [];
+    if(!currentPlaceCode) return;
+
+    const ordersRef = ref(db,'bookings/'+currentPlaceCode);
+    const snapshot = await get(ordersRef);
+    const orders = snapshot.exists() ? snapshot.val() : [];
 
     // صوت الاشعار إذا وصل طلب جديد
     if(orders.length > lastOrdersCount){
@@ -95,41 +78,39 @@ async function displayOrders(){
 
     ordersContainer.innerHTML='';
     if(orders.length===0){
-        ordersContainer.innerHTML='<p style="text-align: center; color: #ffa500;">لا توجد طلبات جديدة بعد.</p>';
+        ordersContainer.innerHTML='<p style="text-align:center; color:#ffa500;">لا توجد طلبات جديدة بعد.</p>';
         return;
     }
 
     orders.forEach((order,i)=>{
         const div = document.createElement('div');
         div.className='order-card';
-
-        let info = `<div class="order-info"><strong>الطلب رقم ${i+1}</strong><br>
-                    الاسم: ${order.name}<br>
-                    رقم الهاتف: ${order.phone}<br>
-                    الطلب: ${order.request || ''}<br>
-                    الوقت: ${order.time || ''}</div>`;
-
+        let info = `<div class="order-info">
+                        <strong>الطلب رقم ${i+1}</strong><br>
+                        الاسم: ${order.name}<br>
+                        رقم الهاتف: ${order.phone}<br>
+                        الطلب: ${order.request || ''}<br>
+                        الوقت: ${order.time || ''}</div>`;
         let actions = `<div>
-                            ${order.location? `<button onclick="openLocation(${order.location.lat},${order.location.lng})" class="small-btn location-btn">فتح موقعي</button>`:''}
-                            <button onclick="deleteOrder(${i})" class="small-btn delete-btn">حذف الطلب</button>
+                        ${order.location? `<button onclick="openLocation(${order.location.lat},${order.location.lng})" class="small-btn location-btn">فتح موقعي</button>`:''}
+                        <button onclick="deleteOrder(${i})" class="small-btn delete-btn">حذف الطلب</button>
                         </div>`;
-
         div.innerHTML = info + actions;
         ordersContainer.appendChild(div);
     });
 }
 
 async function saveOrders(orders){
-    if(!currentPlaceKey) return;
-    await set(ref(db,'bookings/'+currentPlaceKey), orders);
+    if(!currentPlaceCode) return;
+    await set(ref(db,'bookings/'+currentPlaceCode), orders);
 }
 
 refreshBtn.addEventListener('click', displayOrders);
 
 deleteAllBtn.addEventListener('click', async ()=>{
-    if(!currentPlaceKey) return;
+    if(!currentPlaceCode) return;
     if(confirm('هل تريد حذف جميع الطلبات؟')){
-        await set(ref(db,'bookings/'+currentPlaceKey), []);
+        await set(ref(db,'bookings/'+currentPlaceCode), []);
         lastOrdersCount = 0;
         displayOrders();
     }
@@ -140,10 +121,11 @@ document.getElementById('backToLoginBtn').addEventListener('click', () => {
 });
 
 window.deleteOrder = async function(index){
-    if(!currentPlaceKey) return;
+    if(!currentPlaceCode) return;
     if(confirm('هل تريد حذف هذا الطلب؟')){
-        const bookingsSnap = await get(ref(db,'bookings/'+currentPlaceKey));
-        let orders = bookingsSnap.val() || [];
+        const ordersRef = ref(db,'bookings/'+currentPlaceCode);
+        const snapshot = await get(ordersRef);
+        let orders = snapshot.exists() ? snapshot.val() : [];
         orders.splice(index,1);
         await saveOrders(orders);
         lastOrdersCount = orders.length;
@@ -155,35 +137,18 @@ window.openLocation = function(lat,lng){
     window.open(`http://maps.google.com/?q=${lat},${lng}`,'_blank');
 }
 
-// ----------------------------------------------
 // تحميل أولي عند فتح الصفحة + تحديث كل 5 ثواني
-// ----------------------------------------------
 document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const codeFromURL = urlParams.get('code');
-    const passFromURL = urlParams.get('pass');
-
-    if (!codeFromURL || !passFromURL) {
-        ordersDiv.classList.add('hidden');
-        accessError.style.display = 'block';
-        accessError.innerHTML = '<h1>❌ خطأ في الوصول</h1><p>لم يتم تسجيل الدخول. يرجى العودة إلى <a href="login_page.html" style="color:#25d366;">صفحة تسجيل الدخول</a>.</p>';
+    if(!codeFromURL){
+        ordersDiv.innerHTML='<p style="color:red; text-align:center;">لا يوجد رمز المكان في الرابط.</p>';
         return;
     }
-
-    const placeData = await getPlaceData(codeFromURL, passFromURL);
-
-    if (placeData) {
-        currentPlaceCode = codeFromURL;
-        placeTitle.textContent = placeData.name;
-        await displayOrders();
-
-        // تحديث تلقائي كل 5 ثواني
-        setInterval(displayOrders, 5000);
-    } else {
-        ordersDiv.classList.add('hidden');
-        accessError.style.display = 'block';
-        accessError.innerHTML = '<h1>❌ بيانات تسجيل الدخول غير صحيحة</h1><p>يرجى العودة والمحاولة مرة أخرى. <a href="login_page.html" style="color:#25d366;">العودة لصفحة الدخول</a>.</p>';
-    }
+    currentPlaceCode = codeFromURL;
+    placeTitle.textContent = currentPlaceCode;
+    await displayOrders();
+    setInterval(displayOrders, 5000);
 });
 </script>
 </div>
