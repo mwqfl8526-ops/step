@@ -58,7 +58,7 @@ body {background-color: var(--dark-bg); color: var(--text-color); font-family:'S
 <!-- مودل التعليقات -->
 <div id="commentsModal" class="modal-bg">
     <div class="modal-content">
-        <button class="close-modal" onclick="closeCommentsModal()">×</button>
+        <button class="close-modal" id="closeModalBtn">×</button>
         <h3 id="modalAssistantName"></h3>
         <div id="modalCommentsList"></div>
         <input type="text" placeholder="أدخل اسمك..." id="modalCommentName" class="comment-input">
@@ -70,13 +70,13 @@ body {background-color: var(--dark-bg); color: var(--text-color); font-family:'S
             <option value="4">⭐ 4</option>
             <option value="5" selected>⭐ 5</option>
         </select>
-        <button onclick="submitModalComment()" class="comment-submit">إرسال التعليق</button>
+        <button id="submitCommentBtn" class="comment-submit">إرسال التعليق</button>
     </div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
-import { getDatabase, ref, get, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
+import { getDatabase, ref, get, push, set } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDpVqFWJfB4rA2-NA4QIl1w07e2LFQaYic",
@@ -99,7 +99,6 @@ const ROLES = {
 
 const keyMap = { GUIDE:'assistants_guides', COMPANION:'assistants_companions', DRIVER:'assistants_drivers' };
 
-// ⭐ الدوال المساعدة
 function renderStars(rating){
     let stars='';
     for(let i=1;i<=5;i++) stars+=i<=rating?'⭐':'☆';
@@ -115,34 +114,45 @@ function getMajorityRating(comments){
     return majority;
 }
 
-// المودل
+// مودال التعليقات
 let currentModalCode = null;
-function openCommentsModal(code,name){
-    currentModalCode=code;
-    document.getElementById('modalAssistantName').textContent=name;
+const commentsModal = document.getElementById('commentsModal');
+const modalAssistantName = document.getElementById('modalAssistantName');
+const modalCommentsList = document.getElementById('modalCommentsList');
+const modalCommentName = document.getElementById('modalCommentName');
+const modalCommentText = document.getElementById('modalCommentText');
+const modalCommentRating = document.getElementById('modalCommentRating');
+const submitCommentBtn = document.getElementById('submitCommentBtn');
+const closeModalBtn = document.getElementById('closeModalBtn');
+
+function openCommentsModal(code, name){
+    currentModalCode = code;
+    modalAssistantName.textContent = name;
     loadModalComments(code);
-    document.getElementById('commentsModal').style.display='flex';
+    commentsModal.style.display = 'flex';
 }
 function closeCommentsModal(){
-    document.getElementById('commentsModal').style.display='none';
-    currentModalCode=null;
+    commentsModal.style.display = 'none';
+    currentModalCode = null;
 }
+closeModalBtn.addEventListener('click', closeCommentsModal);
+
 function loadModalComments(code){
-    const div=document.getElementById('modalCommentsList');
-    div.innerHTML='';
-    let comments = JSON.parse(localStorage.getItem(`comments_${code}`)) || [];
+    modalCommentsList.innerHTML='';
+    const comments = JSON.parse(localStorage.getItem(`comments_${code}`)) || [];
     comments.slice(-20).forEach(c=>{
         const el=document.createElement('div');
         el.className='comment-item';
         el.innerHTML=`<span class="comment-name">${c.name||'زائر'}</span><span class="comment-stars">${'⭐'.repeat(c.rating)}</span><span class="comment-text">${c.text}</span>`;
-        div.appendChild(el);
+        modalCommentsList.appendChild(el);
     });
 }
-function submitModalComment(){
+
+submitCommentBtn.addEventListener('click', ()=>{
     if(!currentModalCode) return;
-    const name = document.getElementById('modalCommentName').value.trim() || "زائر";
-    const text = document.getElementById('modalCommentText').value.trim();
-    const rating = parseInt(document.getElementById('modalCommentRating').value);
+    const name = modalCommentName.value.trim() || "زائر";
+    const text = modalCommentText.value.trim();
+    const rating = parseInt(modalCommentRating.value);
     if(!text) return;
     const comment = {name,text,rating};
     const localKey = `comments_${currentModalCode}`;
@@ -154,18 +164,23 @@ function submitModalComment(){
     const newRef = push(ref(db, `assistantComments/${currentModalCode}`));
     set(newRef, comment);
 
-    document.getElementById('modalCommentName').value='';
-    document.getElementById('modalCommentText').value='';
-    document.getElementById('modalCommentRating').value='5';
+    modalCommentName.value='';
+    modalCommentText.value='';
+    modalCommentRating.value='5';
     loadModalComments(currentModalCode);
-}
+});
 
 // عرض البطاقات
-async function renderCards(assistantsList,title){
+async function renderCards(assistantsList, title){
     document.getElementById('roleTitleDisplay').textContent = title;
     const grid = document.getElementById('assistantCardsGrid');
     grid.innerHTML='';
-    if(assistantsList.length===0){ grid.innerHTML='<p style="text-align:center;color:#aaa;">لا يوجد مساعدون متاحون حالياً لهذا الدور.</p>'; return; }
+
+    if(assistantsList.length===0){
+        grid.innerHTML='<p style="text-align:center;color:#aaa;">لا يوجد مساعدون متاحون حالياً لهذا الدور.</p>';
+        return;
+    }
+
     assistantsList.forEach(a=>{
         const card = document.createElement('div');
         card.className='assistant-card';
@@ -189,18 +204,22 @@ async function renderCards(assistantsList,title){
                 </div>
             </div>
             <div class="card-details">${details}<p><strong>نبذة:</strong> ${a.about}</p></div>
-            <button class="contact-btn" onclick="startChat('${a.chatCode}','')">💬 تواصل الآن</button>
-            <button class="comments-btn" onclick="openCommentsModal('${a.chatCode}','${a.name}')">💬 التعليقات</button>
+            <button class="contact-btn">💬 تواصل الآن</button>
+            <button class="comments-btn">💬 التعليقات</button>
         `;
+
+        // إضافة أحداث الأزرار
+        card.querySelector('.comments-btn').addEventListener('click', ()=>openCommentsModal(a.chatCode, a.name));
+        card.querySelector('.contact-btn').addEventListener('click', ()=>window.location.href=`chat_page.html?code=${a.chatCode}&name=`);
+
         grid.appendChild(card);
     });
 }
 
-// جلب البيانات مع التخزين في localStorage
+// جلب البيانات
 document.addEventListener('DOMContentLoaded', async()=>{
     const urlParams = new URLSearchParams(window.location.search);
     const roleKey = urlParams.get('role');
-
     const storageKey = roleKey ? `assistants_${roleKey}` : 'assistants_all';
     let cachedData = JSON.parse(localStorage.getItem(storageKey));
 
@@ -225,9 +244,6 @@ document.addEventListener('DOMContentLoaded', async()=>{
         renderCards(data, "جميع المساعدين المتاحين");
     }
 });
-
-function startChat(code,name){ window.location.href=`chat_page.html?code=${code}&name=${encodeURIComponent(name)}`; }
-
 </script>
 </body>
 </html>
