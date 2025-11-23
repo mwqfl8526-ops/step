@@ -105,6 +105,7 @@ for(let i=1;i<=5;i++) stars+=i<=rating?'⭐':'☆';
 return stars;
 }
 
+// تقوم بحساب التقييم بناءً على أغلبية التعليقات
 function getMajorityRating(comments){
 if(!comments || comments.length===0) return 5;
 const counts={};
@@ -129,7 +130,7 @@ currentModalCode=null;
 function loadModalComments(code){
 const div=document.getElementById('modalCommentsList');
 div.innerHTML='';
-// يتم جلب التعليقات من الذاكرة المحلية (localStorage) للعرض السريع
+// يتم جلب التعليقات من الذاكرة المحلية (localStorage) للعرض
 let comments = JSON.parse(localStorage.getItem(`comments_${code}`)) || [];
 comments.slice(-20).forEach(c=>{
 const el=document.createElement('div');
@@ -144,18 +145,15 @@ const name = document.getElementById('modalCommentName').value.trim() || "زائ
 const text = document.getElementById('modalCommentText').value.trim();
 const rating = parseInt(document.getElementById('modalCommentRating').value);
 if(!text) return;
-
 const comment = {name,text,rating};
 
-// 1. الحفظ في الذاكرة المحلية (localStorage) (للعرض الفوري)
+// 1. الحفظ في الذاكرة المحلية (localStorage)
 const localKey = `comments_${currentModalCode}`;
 const existing = JSON.parse(localStorage.getItem(localKey)) || [];
 existing.push(comment);
 localStorage.setItem(localKey, JSON.stringify(existing));
 
-// 2. الحفظ في Firebase
-// يتم إرسال التعليق إلى المسار assistantComments/{كود المساعد}
-// push() يُنشئ مفتاحًا فريدًا جديدًا (ID) لكل تعليق
+// 2. الحفظ في Firebase تحت كود المساعد (appId)
 const newRef = push(ref(db, `assistantComments/${currentModalCode}`));    
 set(newRef, comment);    
 
@@ -182,7 +180,7 @@ let details='';
     else if(a.specialization){ details+=`<p><strong>التخصص:</strong> ${a.specialization}</p><p><strong>سعر اليوم:</strong> ${a.priceDay} درهم</p><p><strong>سعر الساعة:</strong> ${a.priceHour} درهم</p>`; }    
     else if(a.cityPrice){ details+=`<p><strong>أجرة المدينة:</strong> ${a.cityPrice} درهم</p><p><strong>أجرة خارج المدينة:</strong> ${a.outCityPrice} درهم</p>`; }    
 
-    // يتم استخدام a.appId ككود للتعليقات
+    // حساب التقييم الفردي باستخدام appId المساعد
     const comments = JSON.parse(localStorage.getItem(`comments_${a.appId}`)) || [];    
     const majorityRating = getMajorityRating(comments);    
     const ratingHTML=`<div class="rating">${renderStars(majorityRating)}</div><div>(${a.experience} سنوات خبرة)</div>`;    
@@ -217,7 +215,6 @@ if(cachedData){
 }    
 
 // Fetch من Firebase
-// ملاحظة: يُفضل دائمًا جلب البيانات الجديدة من Firebase أولاً ثم تحديث localStorage
 if(roleKey){    
     const snap = await get(ref(db,keyMap[roleKey]));    
     if(snap.exists()){    
@@ -241,7 +238,7 @@ if(roleKey){
 
 });
 
-// هذه الدالة تستخدم الكود (appId) للانتقال لصفحة الشات
+// هذه الدالة تمرر كود المساعد (appId) إلى صفحة الشات
 function startChat(code,name){ window.location.href=`chat_page.html?code=${code}`; }
 
 // ** إضافة الدوال للنطاق العام لحل مشكلة الـ Modal وزر التواصل **
