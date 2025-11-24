@@ -16,13 +16,13 @@ body { font-family: Arial, sans-serif; background-color: #121212; color:#e0e0e0;
 .card-content button.order { background-color: #25d366; color: #fff; margin-bottom:5px; }
 .card-content button.directions { background-color: #128c7e; color: #fff; margin-bottom:5px; }
 .card-content button.commentsBtn { background-color:#ff9800; color:#fff; margin-bottom:5px; }
-.rating { color: #ffd700; font-size: 16px; margin-bottom: 5px; }      
+.rating { color: #ffd700; font-size: 16px; margin-bottom: 5px; }
 
 .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background-color: rgba(0,0,0,0.9); justify-content:center; align-items:center; z-index:1000; }
 .modal-content { background-color: #1e1e1e; padding: 20px; border-radius: 10px; width: 90%; max-width: 500px; position: relative; color:#e0e0e0; }
 .modal-content h3 { margin-top:0; }
 .modal-content label { display:block; margin: 10px 0 5px; }
-.modal-content input, .modal-content textarea, .modal-content select { width:100%; padding:8px; border-radius:5px; border:1px solid #555; background-color:#2c2c2c; color:#e0e0e0; }      
+.modal-content input, .modal-content textarea, .modal-content select { width:100%; padding:8px; border-radius:5px; border:1px solid #555; background-color:#2c2c2c; color:#e0e0e0; }        
 .modal-content button { margin-top: 10px; padding: 8px 12px; border:none; border-radius:5px; cursor:pointer; color:#fff; font-weight:bold; }
 .modal-content button.submitOrder { background-color:#25d366; }
 .modal-content button.addComment { background-color:#ff9800; }
@@ -34,7 +34,7 @@ body { font-family: Arial, sans-serif; background-color: #121212; color:#e0e0e0;
 </style>
 </head>
 <body>
-
+<h2>المطاعم</h2>
 <div class="container" id="cardsContainer"></div>
 
 <!-- مودال الطلب -->
@@ -50,7 +50,7 @@ body { font-family: Arial, sans-serif; background-color: #121212; color:#e0e0e0;
         <label>الطلب:</label>
         <textarea id="userRequest" rows="3" placeholder="طلب الشراء الذي تريده"></textarea>
         <label><input type="checkbox" id="shareLocationOrder"> مشاركة موقعي الحالي</label>
-        <button class="submitOrder" id="submitOrder">إرسال الطلب شراء</button>
+        <button class="submitOrder" id="submitOrder">إرسال الطلب</button>
         <div class="success-message" id="orderSuccess" style="display:none;">تم إرسال الطلب بنجاح وسيتم التواصل معك في أقرب وقت!</div>
     </div>
 </div>
@@ -81,7 +81,6 @@ body { font-family: Arial, sans-serif; background-color: #121212; color:#e0e0e0;
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
 import { getDatabase, ref, set, get, push } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
 
-// إعدادات Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDpVqFWJfB4rA2-NA4QIl1w07e2LFQaYic",
   authDomain: "tourguideapp-313c1.firebaseapp.com",
@@ -110,61 +109,61 @@ const shareLocationOrder = document.getElementById('shareLocationOrder');
 
 const commentsList = document.getElementById('commentsList');
 const commentName = document.getElementById('commentName');
-const commentText = document.getElementById('commentText');
-const commentRating = document.getElementById('commentRating');
+const commentText = document.getElementById('commentText');        
+const commentRating = document.getElementById('commentRating');        
 const addCommentBtn = document.getElementById('addCommentBtn');
 
 let currentPlaceCode = null;
 
-// تحميل المطاعم من Firebase
+// تحميل المطاعم
 async function loadRestaurants() {
-    const restaurantsRef = ref(db, 'restaurants');
-    const snapshot = await get(restaurantsRef);
-    const restaurants = snapshot.exists() ? snapshot.val() : {};
-    return Object.keys(restaurants).map(key => ({ code: key, ...restaurants[key] }));
+    const snapshot = await get(ref(db, 'restaurants'));
+    return snapshot.exists() ? Object.entries(snapshot.val()).map(([code, data])=>({code, ...data})) : [];
 }
 
-// تحميل التعليقات من Firebase
-async function getComments(placeCode) {
+// جلب التعليقات
+async function getComments(placeCode){
     const snapshot = await get(ref(db, `restaurantComments/${placeCode}`));
-    if (!snapshot.exists()) return [];
-    const data = snapshot.val();
-    return Object.values(data);
+    return snapshot.exists() ? Object.values(snapshot.val()) : [];
 }
 
-// حفظ تعليق جديد في Firebase
-async function saveComment(placeCode, commentObj){
-    const commentsRef = ref(db, `restaurantComments/${placeCode}`);
-    const newRef = push(commentsRef);
-    await set(newRef, commentObj);
-    return true;
+// حفظ تعليق جديد
+async function saveComment(placeCode, commentData){
+    const newRef = push(ref(db, `restaurantComments/${placeCode}`));
+    await set(newRef, commentData);
+}
+
+// حفظ الطلب
+async function saveOrder(placeCode, orderData){
+    const newRef = push(ref(db, `bookings/${placeCode}`));
+    await set(newRef, orderData);
 }
 
 // حساب متوسط التقييم
-async function getAverageRating(placeCode) {
-    const comments = await getComments(placeCode);
-    if(comments.length === 0) return 'غير مُقيّم';
-    const totalRating = comments.reduce((sum, c) => sum + parseInt(c.rating || 0), 0);
-    const avg = (totalRating / comments.length).toFixed(1);
-    const stars = '⭐'.repeat(Math.round(avg));
-    return `${avg} ${stars}`;
+function calcAvgRating(comments){
+    if(comments.length===0) return 'غير مُقيّم';
+    const total = comments.reduce((sum,c)=>sum+parseInt(c.rating||0),0);
+    const avg = (total/comments.length).toFixed(1);
+    return `${avg} ${'⭐'.repeat(Math.round(avg))}`;
 }
 
 // عرض المطاعم
-async function renderRestaurants() {
-    cardsContainer.innerHTML = '';
+async function renderRestaurants(){
+    cardsContainer.innerHTML='';
     const restaurants = await loadRestaurants();
-    for (const place of restaurants) {
-        const avgRating = await getAverageRating(place.code);
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
+    for(const place of restaurants){
+        const comments = await getComments(place.code);
+        const avgRating = calcAvgRating(comments);
+
+        const card=document.createElement('div');
+        card.className='card';
+        card.innerHTML=`
             <img src="${place.photoBase64}" alt="${place.name}">
             <div class="card-content">
                 <h3>${place.name}</h3>
                 <p class="rating">التقييم: ${avgRating}</p>
                 <p>التصنيف: <strong>${place.category || 'غير محدد'}</strong></p>
-                <p>خدمة التوصيل: ${place.delivery === 'yes' ? 'متوفرة' : 'غير متوفرة'}</p>
+                <p>خدمة التوصيل: ${place.delivery==='yes'?'متوفرة':'غير متوفرة'}</p>
                 <p>معلومات أخرى: ${place.otherInfo || ''}</p>
                 <button class="order">طلب شراء ديلفري</button>
                 <button class="directions">الاتجاهات</button>
@@ -172,23 +171,19 @@ async function renderRestaurants() {
             </div>
         `;
 
-        const orderBtn = card.querySelector('.order');
-        const dirBtn = card.querySelector('.directions');
-        const commentsBtn = card.querySelector('.commentsBtn');
-
-        orderBtn.addEventListener('click', () => {
+        card.querySelector('.order').addEventListener('click', ()=>{
             currentPlaceCode = place.code;
-            modalPlaceName.textContent = place.name;
-            orderModal.style.display = 'flex';
-            orderSuccess.style.display = 'none';
+            modalPlaceName.textContent=place.name;
+            orderModal.style.display='flex';
+            orderSuccess.style.display='none';
             userName.value=''; userPhone.value=''; userRequest.value=''; shareLocationOrder.checked=false;
         });
 
-        dirBtn.addEventListener('click', () => {
+        card.querySelector('.directions').addEventListener('click', ()=>{
             if(place.gmapsLink) window.open(place.gmapsLink,'_blank');
         });
 
-        commentsBtn.addEventListener('click', async () => {
+        card.querySelector('.commentsBtn').addEventListener('click', ()=>{
             currentPlaceCode = place.code;
             commentsModal.style.display='flex';
             commentName.value=''; commentText.value=''; commentRating.value='5';
@@ -200,75 +195,71 @@ async function renderRestaurants() {
 }
 
 // عرض التعليقات
-async function renderComments() {
+async function renderComments(){
     commentsList.innerHTML='';
     const comments = await getComments(currentPlaceCode);
     if(comments.length===0){ commentsList.innerHTML='<p>لا توجد تعليقات بعد.</p>'; return; }
-
     comments.forEach(c=>{
-        const stars = '⭐'.repeat(parseInt(c.rating||0));
-        const div = document.createElement('div');
+        const stars='⭐'.repeat(parseInt(c.rating||0));
+        const div=document.createElement('div');
         div.className='comment-item';
         div.innerHTML=`<p><strong>${c.name}</strong> <span class="stars">${stars}</span> (${c.time})</p><p>${c.comment}</p>`;
         commentsList.appendChild(div);
     });
 }
 
-modalClose.addEventListener('click', ()=>{ orderModal.style.display='none'; });
-commentsClose.addEventListener('click', ()=>{ commentsModal.style.display='none'; });
+modalClose.addEventListener('click', ()=>orderModal.style.display='none');
+commentsClose.addEventListener('click', ()=>commentsModal.style.display='none');
 
-// إرسال الطلب → Firebase
-submitOrder.addEventListener('click', ()=>{
-    if(!userName.value || !userPhone.value || !userRequest.value){
+// إرسال الطلب
+submitOrder.addEventListener('click', async ()=>{
+    if(!userName.value||!userPhone.value||!userRequest.value){
         alert('يرجى تعبئة جميع الحقول.');
         return;
     }
 
-    function saveOrder(location){
-        const orderData = {
-            name: userName.value.trim(),
-            phone: userPhone.value.trim(),
-            request: userRequest.value.trim(),
-            location: location,
-            time: new Date().toLocaleString('ar-EG',{timeZone:'Africa/Cairo', dateStyle:'short', timeStyle:'short'})
-        };
-
-        const ordersRef = ref(db, `bookings/${currentPlaceCode}`);
-        const newOrder = push(ordersRef);
-        set(newOrder, orderData);
-
+    async function finalize(location){
+        await saveOrder(currentPlaceCode,{
+            name:userName.value.trim(),
+            phone:userPhone.value.trim(),
+            request:userRequest.value.trim(),
+            location:location,
+            time:new Date().toLocaleString('ar-EG',{timeZone:'Africa/Cairo', dateStyle:'short', timeStyle:'short'})
+        });
         orderSuccess.style.display='block';
         userName.value=''; userPhone.value=''; userRequest.value=''; shareLocationOrder.checked=false;
     }
 
     if(shareLocationOrder.checked && navigator.geolocation){
-        submitOrder.disabled = true;
-        submitOrder.textContent = 'جاري تحديد الموقع...';
-        navigator.geolocation.getCurrentPosition(pos=>{
-            submitOrder.disabled=false; submitOrder.textContent='إرسال الطلب شراء';
-            saveOrder({lat:pos.coords.latitude, lng:pos.coords.longitude});
-        }, ()=>{
-            alert('تعذر تحديد موقعك الحالي. سيتم الإرسال بدون موقع.');
-            submitOrder.disabled=false; submitOrder.textContent='إرسال الطلب شراء';
-            saveOrder(null);
+        submitOrder.disabled=true;
+        submitOrder.textContent='جاري تحديد الموقع...';
+        navigator.geolocation.getCurrentPosition(async pos=>{
+            submitOrder.disabled=false;
+            submitOrder.textContent='إرسال الطلب';
+            await finalize({lat:pos.coords.latitude, lng:pos.coords.longitude});
+        }, async ()=>{
+            alert('تعذر تحديد الموقع. سيتم الإرسال بدون موقع.');
+            submitOrder.disabled=false;
+            submitOrder.textContent='إرسال الطلب';
+            await finalize(null);
         });
-    } else { saveOrder(null); }
+    } else {
+        await finalize(null);
+    }
 });
 
-// إضافة تعليق إلى Firebase
+// إضافة تعليق
 addCommentBtn.addEventListener('click', async ()=>{
-    if(!commentName.value || !commentText.value || !commentRating.value){
+    if(!commentName.value||!commentText.value||!commentRating.value){
         alert('يرجى تعبئة الاسم والتقييم والتعليق.');
         return;
     }
-
-    await saveComment(currentPlaceCode, {
-        name: commentName.value.trim(),
-        comment: commentText.value.trim(),
-        rating: commentRating.value,
-        time: new Date().toLocaleString('ar-EG',{timeZone:'Africa/Cairo', dateStyle:'short', timeStyle:'short'})
+    await saveComment(currentPlaceCode,{
+        name:commentName.value.trim(),
+        comment:commentText.value.trim(),
+        rating:commentRating.value,
+        time:new Date().toLocaleString('ar-EG',{timeZone:'Africa/Cairo', dateStyle:'short', timeStyle:'short'})
     });
-
     commentName.value=''; commentText.value=''; commentRating.value='5';
     renderComments();
     renderRestaurants();
