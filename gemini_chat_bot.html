@@ -1,286 +1,301 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>البوت السياحي الموسع</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="data/data_config.js"></script>
-    <style>
-        body { margin: 0; background-color: #1a1a1a; }
-        .chat-container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            /* توسيع الشات ليصبح أوسع */
-            max-width: 800px; 
-            width: 100%;
-            margin: 0 auto;
-            background-color: #222;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-        }
-        .chat-header {
-            background-color: var(--blue-royal);
-            color: var(--white);
-            padding: 15px;
-            text-align: center;
-            font-size: 1.2em;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: relative;
-        }
-        .chat-messages {
-            flex-grow: 1;
-            padding: 15px;
-            overflow-y: auto;
-            background-color: #333;
-        }
-        /* باقي تصميم الرسائل كما هو... */
-        .message {
-            max-width: 85%;
-            margin-bottom: 10px;
-            padding: 10px 15px;
-            border-radius: 18px;
-            word-wrap: break-word;
-            position: relative;
-        }
-        .user-message {
-            background-color: var(--gold);
-            color: var(--dark-bg);
-            align-self: flex-end;
-            margin-left: auto;
-            border-bottom-left-radius: 2px;
-        }
-        .bot-message {
-            background-color: #444;
-            color: var(--white);
-            align-self: flex-start;
-            margin-right: auto;
-            border-bottom-right-radius: 2px;
-            border: 1px solid var(--blue-royal);
-        }
-        .bot-message strong {
-             color: var(--blue-royal);
-             display: block;
-             margin-bottom: 5px;
-        }
-        .message-time {
-            display: block;
-            font-size: 0.7em;
-            color: #ccc;
-            margin-top: 5px;
-            text-align: left;
-        }
-        .chat-input {
-            display: flex;
-            padding: 10px;
-            background-color: #1f1f1f;
-        }
-        .chat-input input[type="text"] {
-            flex-grow: 1;
-            padding: 10px;
-            border-radius: 20px;
-            border: none;
-            background-color: #444;
-            color: white;
-            margin-left: 10px;
-        }
-        .chat-input button {
-            background-color: var(--blue-royal);
-            border: none;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 1.1em;
-            flex-shrink: 0;
-        }
-        
-        /* تصميم الأزرار المقترحة */
-        .quick-replies {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            padding: 10px 15px;
-            background-color: #2a2a2a;
-            border-top: 1px solid #444;
-        }
-        .quick-reply-btn {
-            background-color: var(--card-bg);
-            color: var(--gold);
-            border: 1px solid var(--gold);
-            padding: 8px 15px;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            font-size: 0.9em;
-        }
-        .quick-reply-btn:hover {
-            background-color: var(--gold);
-            color: var(--dark-bg);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>البوت السياحي الموسع - ويكيبيديا</title>
+<style>
+:root {
+    --blue-royal: #004080;
+    --gold: #ffc107;
+    --white: #e0e0e0;
+    --card-bg: #1f1f1f;
+    --dark-bg: #121212;
+    --input-bg: #222;
+}
 
-        /* تعديل زر الخروج ليصبح أيقونة في الزاوية */
-        #exitButton {
-            background-color: transparent;
-            border: none;
-            color: var(--white);
-            font-size: 1.5em;
-            padding: 0;
-            cursor: pointer;
-            position: absolute;
-            left: 15px; 
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        .chat-header {
-            position: relative;
-            justify-content: center;
-        }
-        .chat-header span:not(#exitButton) {
-            margin-right: 20px;
-        }
-    </style>
+body {
+    margin: 0;
+    background-color: var(--dark-bg);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--white);
+}
+
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+    background-color: #1a1a1a;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
+.chat-header {
+    background-color: var(--blue-royal);
+    color: var(--white);
+    padding: 15px;
+    text-align: center;
+    font-size: 1.3em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+#exitButton {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    font-size: 1.5em;
+    color: var(--white);
+    cursor: pointer;
+}
+.chat-messages {
+    flex-grow: 0;          /* منع النمو التلقائي */
+    height: 65vh;          /* حجم ثابت نسبي للشاشة (يمكن تعديل النسبة) */
+    padding: 15px;
+    overflow-y: auto;      /* التمرير عند امتلاء الرسائل */
+    background-color: #1e1e1e;
+    border-radius: 0 0 10px 10px; /* اختياري لجمال التصميم */
+}
+
+.message {
+    max-width: 85%;
+    margin-bottom: 12px;
+    padding: 12px 18px;
+    border-radius: 18px;
+    word-wrap: break-word;
+    position: relative;
+    line-height: 1.5;
+}
+
+.user-message {
+    background-color: var(--gold);
+    color: var(--dark-bg);
+    align-self: flex-end;
+    margin-left: auto;
+    border-bottom-left-radius: 4px;
+}
+
+.bot-message {
+    background-color: #2a2a2a;
+    color: var(--white);
+    align-self: flex-start;
+    margin-right: auto;
+    border-bottom-right-radius: 4px;
+    border: 1px solid var(--blue-royal);
+}
+
+.bot-message strong {
+    color: var(--blue-royal);
+    display: block;
+    margin-bottom: 5px;
+    font-size: 1.1em;
+}
+
+.message-time {
+    display:block;
+    font-size:0.7em;
+    color:#ccc;
+    margin-top:5px;
+    text-align:left;
+}
+
+.chat-input {
+    display: flex;
+    padding: 10px;
+    background-color: var(--input-bg);
+}
+
+.chat-input input[type="text"] {
+    flex-grow: 1;
+    padding: 12px;
+    border-radius: 20px;
+    border: none;
+    background-color: #333;
+    color: white;
+    margin-left: 10px;
+}
+
+.chat-input button {
+    background-color: var(--blue-royal);
+    border: none;
+    color: white;
+    padding: 12px 18px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.1em;
+    flex-shrink: 0;
+}
+
+/* أزرار الأسئلة والمعالم أفقية وقابلة للسحب */
+.quick-replies {
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    padding: 10px;
+    background-color: #2a2a2a;
+    border-top: 1px solid #444;
+}
+
+.quick-reply-btn {
+    flex: 0 0 auto;
+    background-color: var(--card-bg);
+    color: var(--gold);
+    border: 1px solid var(--gold);
+    padding: 10px 18px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 0.9em;
+    white-space: nowrap;
+}
+
+.quick-reply-btn:hover {
+    background-color: var(--gold);
+    color: var(--dark-bg);
+}
+
+</style>
 </head>
 <body>
-    <div class="chat-container">
-        <div class="chat-header">
-            <button id="exitButton" onclick="leaveChat()">✖️</button>
-            <span>🤖 البوت السياحي</span>
-        </div>
-        
-        <div id="chatMessages" class="chat-messages">
-             <div class="message bot-message">
-                <strong>مرحباً بك! أنا البوت السياحي.</strong>
-                <p>كيف يمكنني مساعدتك اليوم؟ يمكنك أن تسألني عن أي تفاصيل سياحية أو عن كيفية استخدام البرنامج.</p>
-                <span class="message-time">الآن</span>
-            </div>
-        </div>
 
-        <div id="quickReplies" class="quick-replies">
-            </div>
+<div class="chat-container">
+    <div class="chat-header">
+        <button id="exitButton" onclick="leaveChat()">✖️</button>
+        <span>🤖 البوت السياحي</span>
+    </div>
 
-        <div class="chat-input">
-            <input type="text" id="messageInput" placeholder="اسأل البوت عن المعالم أو استخدام البرنامج...">
-            <button onclick="sendMessage()">▶️</button>
+    <div id="chatMessages" class="chat-messages">
+        <div class="message bot-message">
+            <strong>مرحباً بك!</strong>
+            <p>يمكنك كتابة سؤالك عن المعالم أو استخدام الأزرار السريعة لمعرفة كيفية حجز سائق، مرشد أو معلومات سياحية مفصلة.</p>
+            <span class="message-time">الآن</span>
         </div>
     </div>
 
-    <script>
-        const chatMessagesDiv = document.getElementById('chatMessages');
-        const input = document.getElementById('messageInput');
-        const quickRepliesDiv = document.getElementById('quickReplies');
+    <div id="quickReplies" class="quick-replies"></div>
 
-        // قائمة الأسئلة المقترحة
-        const suggestedQuestions = [
-            "ما هي أفضل المعالم في دبي؟",
-            "كيف أحجز سائق؟",
-            "ما هي حالة الطقس المتوقعة؟",
-            "كيف أبلغ عن شكوى؟",
-            "معلومات عن جامع الشيخ زايد الكبير؟"
-        ];
-        
-        function populateQuickReplies() {
-            quickRepliesDiv.innerHTML = '';
-            suggestedQuestions.forEach(question => {
-                const btn = document.createElement('button');
-                btn.className = 'quick-reply-btn';
-                btn.textContent = question;
-                btn.onclick = () => handleQuickReply(question);
-                quickRepliesDiv.appendChild(btn);
-            });
-        }
+    <div class="chat-input">
+        <input type="text" id="messageInput" placeholder="اسأل البوت عن المعالم أو استخدام التطبيق...">
+        <button onclick="sendMessage()">▶️</button>
+    </div>
+</div>
 
-        /**
-         * دالة لمحاكاة اتصال Gemini API
-         * يتم هنا دمج المنطق الديناميكي للمحاكاة، مع الأخذ بالاعتبار أن هذا جاهز للربط الفعلي.
-         */
-        function callGeminiAPI(userMessage) {
-            // يمكن استبدال هذا المنطق برمز API حقيقي مستقبلاً.
-            const lowerMsg = userMessage.toLowerCase();
-            
-            let response = 'أهلاً بك! أنا البوت السياحي. سأحاول تزويدك بالمعلومات، لكن هذه إجابة مُحاكاة لدعم نظام Gemini. ';
+<script>
+const chatMessagesDiv = document.getElementById('chatMessages');
+const input = document.getElementById('messageInput');
+const quickRepliesDiv = document.getElementById('quickReplies');
 
-            // --- المعالم السياحية التفصيلية ---
-            if (lowerMsg.includes('برج خليفة') || lowerMsg.includes('دبي')) {
-                response += 'برج خليفة (دبي): هو رمز للابتكار. يرتفع لأكثر من 828 مترًا. يمكنك زيارة منصات المراقبة "At The Top" والاستمتاع بمشاهدة نافورة دبي الراقصة بالقرب منه.';
-            } else if (lowerMsg.includes('جامع الشيخ زايد') || lowerMsg.includes('أبوظبي')) {
-                response += 'جامع الشيخ زايد الكبير (أبوظبي): يُعد أحد أكبر المساجد في العالم وتحفة معمارية تجمع بين الفن الإسلامي القديم والحديث. مفتوح للزوار مجاناً (مع الالتزام بالملابس المحتشمة).';
-            } else if (lowerMsg.includes('طقس') || lowerMsg.includes('حالة الطقس')) {
-                 response += 'الطقس المتوقع في الإمارات الآن: غالباً مشمس وتتراوح درجات الحرارة بين 22°C و 30°C. يفضل شرب الماء باستمرار. (محاكاة لإجابة ديناميكية).';
-            // --- إرشاد استخدام البرنامج ---
-            } else if (lowerMsg.includes('حجز سائق') || lowerMsg.includes('حجز مرشد')) {
-                response += 'للحجز: اذهب إلى **الخدمات الرئيسية**، ثم اختر **خدمات التنقل (سائقين)** أو **المرشدين السياحيين**، تصفح الكروت المتاحة، ثم انقر على زر "حجز" على الكارت المناسب. ستظهر لك تفاصيل الحجز.';
-            } else if (lowerMsg.includes('شكوى') || lowerMsg.includes('إبلاغ عن شكوى')) {
-                 response += 'للإبلاغ عن شكوى أو اقتراح، اذهب إلى **الخدمات الرئيسية** (عبر زر ✖️ بالأعلى)، ثم اضغط على زر "شكوى / اقتراح". ستظهر لك نافذة لملء بياناتك وتفاصيل الشكوى.';
-            } else if (lowerMsg.includes('خدمات البرنامج')) {
-                 response += 'يقدم البرنامج حجزاً مباشراً للمرشدين والسائقين والمرافقين، بالإضافة إلى تصفح الفنادق والمطاعم القريبة، وزر "شكوى / اقتراح"، وخدمة الطوارئ 🚨.';
-            } 
-            else {
-                response += 'سؤالك: "' + userMessage + '". هذه إجابة ديناميكية محتملة من Gemini عن تفاصيل سياحية أو إرشادية حول البرنامج. الرجاء محاولة إرسال استعلام سياحي أكثر تحديداً.';
-            }
+// أسئلة التطبيق
+const appQuestions = [
+    "كيف أحجز سائق؟",
+    "كيف أحجز مرشد سياحي؟",
+    "كيف أبلغ عن شكوى؟",
+    "كيف أستخدم البرنامج؟"
+];
 
-            return response;
-        }
+// أهم المعالم السياحية بالإمارات
+const landmarks = [
+    "برج خليفة",
+    "دبي مول",
+    "نافورة دبي",
+    "جامع الشيخ زايد",
+    "متحف اللوفر أبوظبي",
+    "حديقة الإمارات للحيوانات",
+    "جزيرة ياس",
+    "حديقة وايلد وادي",
+    "سوق الذهب دبي"
+];
 
-        function addMessage(sender, text) {
-            const time = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
-            
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message ' + (sender === 'user' ? 'user-message' : 'bot-message');
-            
-            let content = '';
-            if (sender === 'bot') {
-                 content += '<strong>🤖 البوت السياحي</strong>'; 
-            }
-            // استخدام pre-wrap للحفاظ على تنسيق الـ \n (السطور الجديدة) في الردود
-            content += `<p style="white-space: pre-wrap;">${text}</p><span class="message-time">${time}</span>`;
-            messageDiv.innerHTML = content;
-            
-            chatMessagesDiv.appendChild(messageDiv);
-            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
-        }
+// إنشاء أزرار الأسئلة والمعالم
+function populateQuickReplies() {
+    quickRepliesDiv.innerHTML = '';
+    [...appQuestions, ...landmarks].forEach(text => {
+        const btn = document.createElement('button');
+        btn.className = 'quick-reply-btn';
+        btn.textContent = text;
+        btn.onclick = () => handleQuickReply(text);
+        quickRepliesDiv.appendChild(btn);
+    });
+}
 
-        // معالجة النقر على الأزرار المقترحة
-        function handleQuickReply(question) {
-            addMessage('user', question);
-            input.value = '';
-            
-            setTimeout(() => {
-                const botResponse = callGeminiAPI(question);
-                addMessage('bot', botResponse);
-            }, 500); 
-        }
+// جلب معلومات موسعة من ويكيبيديا
+async function fetchWikipediaSummary(query) {
+    try {
+        const response = await fetch(`https://ar.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`);
+        const data = await response.json();
+        if (data.extract) return data.extract;
+        else return "عذرًا، لم أتمكن من العثور على معلومات موسعة لهذا السؤال.";
+    } catch(err) {
+        return "حدث خطأ أثناء جلب المعلومات من ويكيبيديا.";
+    }
+}
 
-        // معالجة الرسائل النصية الموجهة لـ Gemini
-        function sendMessage() {
-            const userMessage = input.value.trim();
-            if (userMessage === '') return;
+// الردود المختصرة الخاصة بالتطبيق
+function appResponse(message) {
+    const lowerMsg = message.toLowerCase();
+    if (lowerMsg.includes('حجز سائق')) return 'لحجز سائق: اذهب إلى الخدمات الرئيسية واختر "خدمات التنقل (سائقين)".';
+    if (lowerMsg.includes('حجز مرشد')) return 'لحجز مرشد: اذهب إلى الخدمات الرئيسية واختر "المرشدين السياحيين".';
+    if (lowerMsg.includes('شكوى')) return 'للإبلاغ عن شكوى: اضغط على زر "شكوى / اقتراح" في الخدمات الرئيسية.';
+    if (lowerMsg.includes('كيف أستخدم البرنامج')) return 'يمكنك استخدام البرنامج لحجز السائقين، المرشدين، تصفح الفنادق والمعالم، وتقديم الشكاوى.';
+    return null;
+}
 
-            addMessage('user', userMessage);
-            input.value = '';
+// إضافة رسالة جديدة
+function addMessage(sender, text) {
+    const time = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message ' + (sender==='user'?'user-message':'bot-message');
+    let content = '';
+    if (sender==='bot') content += '<strong>🤖 البوت السياحي</strong>';
+    content += `<p style="white-space: pre-wrap;">${text}</p><span class="message-time">${time}</span>`;
+    messageDiv.innerHTML = content;
+    chatMessagesDiv.appendChild(messageDiv);
+    chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+}
 
-            setTimeout(() => {
-                const botResponse = callGeminiAPI(userMessage); // توجيه الرسالة لـ Gemini
-                addMessage('bot', botResponse);
-            }, 800); 
-        }
-        
-        function leaveChat() {
-            window.location.href = 'main_services.html';
-        }
+// معالجة أزرار الأسئلة
+function handleQuickReply(question) {
+    addMessage('user', question);
+    input.value = '';
+    setTimeout(() => sendBotMessage(question), 300);
+}
 
-        document.getElementById('messageInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
+// إرسال رسالة المستخدم
+function sendMessage() {
+    const userMessage = input.value.trim();
+    if (!userMessage) return;
+    addMessage('user', userMessage);
+    input.value = '';
+    setTimeout(() => sendBotMessage(userMessage), 300);
+}
 
-        document.addEventListener('DOMContentLoaded', () => {
-             populateQuickReplies(); 
-             chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
-        });
-    </script>
+// إرسال الرد من البوت
+async function sendBotMessage(message) {
+    const appResp = appResponse(message);
+    if (appResp) {
+        addMessage('bot', appResp);
+    } else {
+        const wikiText = await fetchWikipediaSummary(message);
+        addMessage('bot', wikiText);
+    }
+}
+
+// الخروج من الشات
+function leaveChat() { window.location.href = 'main_services.html'; }
+
+document.getElementById('messageInput').addEventListener('keypress', e => {
+    if (e.key==='Enter') sendMessage();
+});
+
+document.addEventListener('DOMContentLoaded', () => { populateQuickReplies(); });
+</script>
+
 </body>
 </html>
