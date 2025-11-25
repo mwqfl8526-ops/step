@@ -35,6 +35,21 @@
         input[type="text"] {width:100%; padding:10px; border-radius:6px; border:1px solid var(--blue-royal); background:#2a2a2a; color:var(--white);}
         button.btn-submit {width:100%; padding:10px; background-color: var(--gold); border:none; border-radius:6px; color:var(--dark-bg); cursor:pointer; font-weight:bold;}
         button.btn-submit:hover {background-color:#e0a800;}
+
+        /* 🔄 اللودر */
+        .loader {
+            border: 4px solid #444;
+            border-top: 4px solid var(--gold);
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            animation: spin 0.9s linear infinite;
+            margin: 15px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -58,9 +73,7 @@
 
     <div id="resultBox" class="result-box" style="display:none;"></div>
 
-    <div id="test-info" style="margin-top:20px;font-size:0.85em;color:#aaa;">
-       
-    </div>
+    <div id="test-info" style="margin-top:20px;font-size:0.85em;color:#aaa;"></div>
 </div>
 
 <script type="module">
@@ -90,12 +103,16 @@ document.getElementById("inquiryForm").addEventListener("submit", async function
     e.preventDefault();
     const id = document.getElementById("applicationId").value.trim();
     const result = document.getElementById("resultBox");
-    result.style.display="none";
-    result.innerHTML="";
+
+    // 🔄 عرض اللودر
+    result.style.display = "block";
+    result.innerHTML = `
+        <div class="loader"></div>
+        <p style="text-align:center;color:var(--yellow-warning);font-weight:bold;">جاري البحث...</p>
+    `;
 
     if(!id){
         result.innerHTML="<p class='error-message'>الرجاء إدخال رقم الطلب.</p>";
-        result.style.display="block";
         return;
     }
 
@@ -111,7 +128,6 @@ document.getElementById("inquiryForm").addEventListener("submit", async function
 
             if(!foundApp){
                 result.innerHTML="<p class='error-message'>❌ لم يتم العثور على طلب بهذا الرقم.</p>";
-                result.style.display="block";
                 return;
             }
 
@@ -138,15 +154,12 @@ document.getElementById("inquiryForm").addEventListener("submit", async function
                 </p>
                 ${action}
             `;
-            result.style.display="block";
         }else{
             result.innerHTML="<p class='error-message'>❌ لا توجد بيانات في النظام حالياً.</p>";
-            result.style.display="block";
         }
     }catch(err){
         console.error(err);
         result.innerHTML="<p class='error-message'>❌ حدث خطأ أثناء الاتصال بالنظام، حاول مرة أخرى.</p>";
-        result.style.display="block";
     }
 });
 </script>
